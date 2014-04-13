@@ -801,7 +801,7 @@ static void enqueue_task(struct rq *rq, struct task_struct *p, int flags)
 	update_rq_clock(rq);
 	sched_info_queued(p);
 	p->sched_class->enqueue_task(rq, p, flags);
-	trace_sched_enq_deq_task(p, 1);
+	trace_sched_enq_deq_task(p, 1, cpumask_bits(&p->cpus_allowed)[0]);
 	inc_cumulative_runnable_avg(rq, p);
 }
 
@@ -810,7 +810,7 @@ static void dequeue_task(struct rq *rq, struct task_struct *p, int flags)
 	update_rq_clock(rq);
 	sched_info_dequeued(p);
 	p->sched_class->dequeue_task(rq, p, flags);
-	trace_sched_enq_deq_task(p, 0);
+	trace_sched_enq_deq_task(p, 0, cpumask_bits(&p->cpus_allowed)[0]);
 	dec_cumulative_runnable_avg(rq, p);
 }
 
@@ -1427,7 +1427,7 @@ void set_task_cpu(struct task_struct *p, unsigned int new_cpu)
 #endif
 #endif
 
-	trace_sched_migrate_task(p, new_cpu);
+	trace_sched_migrate_task(p, new_cpu, pct_task_load(p));
 
 	if (task_cpu(p) != new_cpu) {
 		struct task_migration_notifier tmn;
@@ -7933,6 +7933,8 @@ void __init sched_init(void)
 
 	sec_gaf_supply_rqinfo(offsetof(struct rq, curr),
 					offsetof(struct cfs_rq, rq));
+
+	BUG_ON(num_possible_cpus() > BITS_PER_LONG);
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	alloc_size += 2 * nr_cpu_ids * sizeof(void **);

@@ -115,7 +115,7 @@ int cpufreq_frequency_table_target(struct cpufreq_policy *policy,
 		.driver_data = ~0,
 		.frequency = 0,
 	};
-	unsigned int i, diff;
+	unsigned int diff, i = 0;
 	
 	if (target_freq < policy->min)
 		target_freq = policy->min;

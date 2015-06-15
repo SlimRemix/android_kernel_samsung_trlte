@@ -470,25 +470,6 @@ static void wakeup_boost(void)
 	}
 }
 
-void __ref intelli_plug_perf_boost(bool on)
-{
-    unsigned int cpu;
-    
-    if (intelli_plug_active) {
-        flush_workqueue(intelliplug_wq);
-        if (on) {
-            for_each_possible_cpu(cpu) {
-                if (!cpu_online(cpu))
-                cpu_up(cpu);
-            }
-        } else {
-            queue_delayed_work_on(0, intelliplug_wq,
-            	&intelli_plug_work,
-            	msecs_to_jiffies(sampling_time));
-        }
-    }
-}
-
 #ifdef CONFIG_POWERSUSPEND
 static void __ref intelli_plug_resume(struct power_suspend *handler)
 #else

@@ -48,7 +48,7 @@ extern ssize_t store_UV_mV_table(struct cpufreq_policy *policy,const char *buf, 
 #define CPUS_AVAILABLE	num_possible_cpus()
 
 int GLOBALKT_MIN_FREQ_LIMIT = 300000;
-int GLOBALKT_MAX_FREQ_LIMIT = 2649600;
+int GLOBALKT_MAX_FREQ_LIMIT = 3072000;
 
 unsigned int vfreq_lock = 0;
 static bool vfreq_lock_tempOFF = false;
@@ -61,13 +61,13 @@ static unsigned int Lscreen_off_scaling_mhz = 2649600;
 static unsigned int Lscreen_off_scaling_mhz_orig = 2649600;
 static unsigned long Lscreen_off_GPU_mhz = 0;
 static unsigned int Lbluetooth_scaling_mhz = 0;
-static unsigned int Lbluetooth_scaling_mhz_orig = 300000;
+static unsigned int Lbluetooth_scaling_mhz_orig = 268800;
 static bool bluetooth_scaling_mhz_active = false;
 static unsigned int Lmusic_play_scaling_mhz = 0;
-static unsigned int Lmusic_play_scaling_mhz_orig = 300000;
+static unsigned int Lmusic_play_scaling_mhz_orig = 268800;
 static bool music_play_scaling_mhz_active = false;
 static unsigned int Lcharging_min_mhz = 0;
-static unsigned int Lcharging_min_mhz_orig = 300000;
+static unsigned int Lcharging_min_mhz_orig = 268800;
 static unsigned int Lcharging_max_mhz = 0;
 static unsigned int Lcharging_max_mhz_orig = 2649600;
 static bool Lcharging_mhz_active = false;
@@ -746,15 +746,15 @@ static ssize_t store_scaling_booted(struct cpufreq_policy *policy, const char *b
 			vfreq_lock_tempOFF = true;
 		}
 		isBooted = 1;
-		GLOBALKT_MIN_FREQ_LIMIT = 300000;
+		GLOBALKT_MIN_FREQ_LIMIT = 268800;
 		cpufreq_get_policy(&new_policy, policy->cpu);
-		new_policy.min = 300000;
-		policy->user_policy.min = 300000;
+		new_policy.min = 268800;
+		policy->user_policy.min = 268800;
 		new_policy.max = 2649600;
 		policy->user_policy.max = 2649600;
 		new_policy.cpuinfo.min_freq = GLOBALKT_MIN_FREQ_LIMIT;
 		new_policy.cpuinfo.max_freq = CPUINFO_MAX_FREQ_LIMIT;
-		new_policy.user_policy.min = 300000;
+		new_policy.user_policy.min = 268800;
 		new_policy.user_policy.max = 2649600;
 		ret = cpufreq_set_policy(policy, &new_policy);
 	}

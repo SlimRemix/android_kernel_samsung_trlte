@@ -735,7 +735,7 @@ ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 		return -EINVAL;
 
 	/* format UV_mv table */
-	for (i = num_levels-1-mod; i > 0; i--)
+	for (i = 1; i < num_levels; i++)
 	{
 		freq = cpu_clk[0]->fmax[i] / 1000;
 		len += sprintf(buf + len, "%dmhz: %u mV\n", freq / 1000,
@@ -762,7 +762,7 @@ ssize_t show_UV_mV_table_stock(struct cpufreq_policy *policy, char *buf)
 		return -EINVAL;
 
 	/* format UV_mv table */
-	for (i = num_levels-1-mod; i > 0; i--)
+	for (i = 1; i < num_levels; i++)
 	{
 		freq = cpu_clk[0]->fmax[i] / 1000;
 		len += sprintf(buf + len, "%dmhz: %u mV\n", freq / 1000,

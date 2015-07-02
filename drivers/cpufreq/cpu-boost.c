@@ -204,10 +204,7 @@ static int boost_mig_sync_thread(void *data)
 
 		cancel_delayed_work_sync(&s->boost_rem);
 
-		if (req_freq >= dest_policy.min)
-			s->boost_min = req_freq;
-		else
-			s->boost_min = dest_policy.min;
+		s->boost_min = req_freq;
 
 		/* Force policy re-evaluation to trigger adjust notifier. */
 		get_online_cpus();
@@ -303,12 +300,7 @@ static void do_input_boost(struct work_struct *work)
 			continue;
 
 		cancel_delayed_work_sync(&i_sync_info->input_boost_rem);
-
-		if (input_boost_freq >= policy.min)
-			i_sync_info->input_boost_min = input_boost_freq;
-		else
-			i_sync_info->input_boost_min = policy.min;
-
+		i_sync_info->input_boost_min = input_boost_freq;
 		cpufreq_update_policy(i);
 		queue_delayed_work_on(i_sync_info->cpu, cpu_boost_wq,
 			&i_sync_info->input_boost_rem,

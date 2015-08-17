@@ -496,8 +496,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
                    -funswitch-loops -fpredictive-commoning -fgcse-after-reload \
                    -fno-aggressive-loop-optimizations \
                    -fno-delete-null-pointer-checks -std=gnu89 \
-                   --param l1-cache-size=32 --param l1-cache-line-size=64 --param l2-cache-size=2048 \
-                   $(call cc-option,-fno-delete-null-pointer-checks,)
+                   --param l1-cache-size=32 --param l1-cache-line-size=64 --param l2-cache-size=2048
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
@@ -704,6 +703,11 @@ endif # $(dot-config)
 # Defaults to vmlinux, but the arch makefile usually adds further targets
 all: vmlinux
 
+
+include $(srctree)/arch/$(SRCARCH)/Makefile
+
+KBUILD_CFLAGS	+= $(call cc-option,-fno-delete-null-pointer-checks,)
+
 # begin The SaberMod Project additions
 
 # Copyright (C) 2015 The SaberMod Project
@@ -724,13 +728,13 @@ all: vmlinux
 # Handle kernel CC flags by importing vendor/sm strings
 ifneq ($(strip $(LOCAL_O3)),true)
   ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
-    KBUILD_CFLAGS += -Os $(call cc-disable-warning,maybe-uninitialized,)
-  else
-    KBUILD_CFLAGS += -O2
+KBUILD_CFLAGS	+= -Os -std=gnu89 $(call cc-disable-warning,maybe-uninitialized,)
+else
+KBUILD_CFLAGS	+= -Os -std=gnu89 $(call cc-disable-warning,maybe-uninitialized,)
   endif
 endif
 
-include $(srctree)/arch/$(SRCARCH)/Makefile
+endif
 
 ifdef CONFIG_READABLE_ASM
 # Disable optimizations that make assembler listings hard to read.

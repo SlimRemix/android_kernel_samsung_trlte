@@ -204,6 +204,7 @@ VPATH		:= $(srctree)$(if $(KBUILD_EXTMOD),:$(KBUILD_EXTMOD))
 
 export srctree objtree VPATH
 
+CCACHE := ccache
 
 # SUBARCH tells the usermode build what the underlying arch is.  That is set
 # first, and if a usermode build is happening, the "ARCH=um" on the command
@@ -240,7 +241,7 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/x86/ -e s/x86_64/x86/ \
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 export KBUILD_BUILDHOST := $(SUBARCH)
 ARCH		?= $(SUBARCH)
-CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
+CROSS_COMPILE	?= $(CCACHE) $(CONFIG_CROSS_COMPILE:"%"=%)
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
@@ -286,10 +287,10 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 	  else if [ -x /bin/bash ]; then echo /bin/bash; \
 	  else echo sh; fi ; fi)
 
-HOSTCC       = gcc
-HOSTCXX      = g++
-HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer -std=gnu89
-HOSTCXXFLAGS = -O2
+HOSTCC       = $(CCACHE) gcc
+HOSTCXX      = $(CCACHE) g++
+HOSTCFLAGS   = -std=gnu89 -Wall -Wmissing-prototypes -Wstrict-prototypes -O3 -fomit-frame-pointer -pipe -DNDEBUG -fgcse-las -floop-nest-optimize -fgraphite -fgraphite-identity -floop-flatten -floop-parallelize-all -ftree-loop-linear -floop-interchange -floop-strip-mine -floop-block
+HOSTCXXFLAGS = -std=gnu89 -pipe -DNDEBUG -O3 -fgcse-las -floop-nest-optimize -fgraphite -fgraphite-identity -floop-flatten -floop-parallelize-all -ftree-loop-linear -floop-interchange -floop-strip-mine -floop-block
 
 ifeq ($(shell $(HOSTCC) -v 2>&1 | grep -c "clang version"), 1)
 HOSTCFLAGS  += -Wno-unused-value -Wno-unused-parameter \
@@ -343,18 +344,18 @@ $(srctree)/scripts/Kbuild.include: ;
 include $(srctree)/scripts/Kbuild.include
 
 # Make variables (CC, etc...)
-AS		= $(CROSS_COMPILE)as
-LD		= $(CROSS_COMPILE)ld
-CC		= $(CROSS_COMPILE)gcc
-CPP		= $(CC) -E
-AR		= $(CROSS_COMPILE)ar
-NM		= $(CROSS_COMPILE)nm
+AS          = $(CROSS_COMPILE)as
+LD          = $(CROSS_COMPILE)ld.bfd
+CC          = $(CCACHE) $(CROSS_COMPILE)gcc
+CPP         = $(CC) -E $(KERNELFLAGS)
+AR          = $(CROSS_COMPILE)ar
+NM          = $(CROSS_COMPILE)nm
 STRIP		= $(CROSS_COMPILE)strip
 OBJCOPY		= $(CROSS_COMPILE)objcopy
 OBJDUMP		= $(CROSS_COMPILE)objdump
-AWK		= awk
+AWK         = awk
 GENKSYMS	= scripts/genksyms/genksyms
-INSTALLKERNEL  := installkernel
+INSTALLKERNEL := installkernel
 DEPMOD		= /sbin/depmod
 PERL		= perl
 PYTHON		= python
@@ -366,99 +367,15 @@ cmd_fips_gen_hmac = $(CONFIG_SHELL) $(srctree)/scripts/fips_crypto_hmac.sh $(obj
 endif
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
-		  -Wbitwise -Wno-return-void $(CF)
-CFLAGS_MODULE   =
-AFLAGS_MODULE   =
-LDFLAGS_MODULE  =
-CFLAGS_KERNEL	=
-AFLAGS_KERNEL	=
+                  -Wbitwise -Wno-return-void $(CF)
+KERNELFLAGS     = -std=gnu89 -pipe -DNDEBUG -O3 -ffast-math -mtune=cortex-a15 -mcpu=cortex-a15 -marm -mfpu=neon-vfpv4 -ftree-vectorize -mvectorize-with-neon-quad -munaligned-access -fgcse-lm -fgcse-sm -fsingle-precision-constant -fforce-addr -fsched-spec-load -funroll-loops -fpredictive-commoning -floop-nest-optimize -fgraphite -fgraphite-identity -floop-parallelize-all -ftree-loop-linear -floop-interchange -floop-strip-mine -floop-block -floop-flatten
+MODFLAGS        = -DMODULE $(KERNELFLAGS)
+CFLAGS_MODULE   = $(MODFLAGS) -fno-pic
+AFLAGS_MODULE   = $(MODFLAGS)
+LDFLAGS_MODULE  = -T $(srctree)/scripts/module-common.lds -flto
+CFLAGS_KERNEL   = $(KERNELFLAGS)
+AFLAGS_KERNEL   = $(KERNELFLAGS)
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
-
-# begin The SaberMod Project additions
-
-# Copyright (C) 2015 The SaberMod Project
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
-# Highest level of basic gcc optimizations if enabled
-ifeq ($(strip $(LOCAL_O3)),true)
-  SABERMOD_KERNEL_FLAGS	:= -O3
-else
-  SABERMOD_KERNEL_FLAGS := -O2
-endif
-
-# Extra flags
-ifdef SABERMOD_KERNEL_FLAGS
-  ifdef EXTRA_SABERMOD_GCC_VECTORIZE
-    SABERMOD_KERNEL_FLAGS += $(EXTRA_SABERMOD_GCC_VECTORIZE)
-  endif
-  ifdef EXTRA_SABERMOD_GCC
-    SABERMOD_KERNEL_FLAGS += $(EXTRA_SABERMOD_GCC)
-  endif
-else
-  ifdef EXTRA_SABERMOD_GCC_VECTORIZE
-    SABERMOD_KERNEL_FLAGS := $(EXTRA_SABERMOD_GCC_VECTORIZE)
-  endif
-  ifdef EXTRA_SABERMOD_GCC
-    SABERMOD_KERNEL_FLAGS := $(EXTRA_SABERMOD_GCC)
-  endif
-endif
-
-ifdef SABERMOD_KERNEL_FLAGS
-  ifdef kernel_arch_variant_cflags
-    SABERMOD_KERNEL_FLAGS += $(kernel_arch_variant_cflags)
-  endif
-else
-  ifdef kernel_arch_variant_cflags
-    SABERMOD_KERNEL_FLAGS := $(kernel_arch_variant_cflags)
-  endif
-endif
-
-# Strict aliasing for hammerhead if enabled
-ifdef CONFIG_ARCH_APQ8084_TRLTE_STRICT_ALIASING
-  ifdef SABERMOD_KERNEL_FLAGS
-    SABERMOD_KERNEL_FLAGS += $(KERNEL_STRICT_FLAGS)
-  else
-    SABERMOD_KERNEL_FLAGS := $(KERNEL_STRICT_FLAGS)
-  endif
-endif
-
-ifneq (1,$(words $(DISABLE_SANITIZE_LEAK)))
-
-  # Memory leak detector sanitizer
-  ifdef SABERMOD_KERNEL_FLAGS
-    SABERMOD_KERNEL_FLAGS += -fsanitize=leak
-  else
-    SABERMOD_KERNEL_FLAGS := -fsanitize=leak
-  endif
-endif
-
-ifdef SABERMOD_KERNEL_FLAGS
-  ifdef GRAPHITE_KERNEL_FLAGS
-    SABERMOD_KERNEL_FLAGS += $(GRAPHITE_KERNEL_FLAGS)
-  endif
-else
-  ifdef GRAPHITE_KERNEL_FLAGS
-    SABERMOD_KERNEL_FLAGS := $(GRAPHITE_KERNEL_FLAGS) -marm
-  endif
-endif
-
-# Add everything to CC at the end
-ifdef SABERMOD_KERNEL_FLAGS
-  CC += $(SABERMOD_KERNEL_FLAGS)
-endif
-# end The SaberMod Project additions
 
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE    := \
@@ -466,8 +383,9 @@ USERINCLUDE    := \
 		-Iarch/$(hdr-arch)/include/generated/uapi \
 		-I$(srctree)/include/uapi \
 		-Iinclude/generated/uapi \
-                -include $(srctree)/include/linux/kconfig.h
-
+        -include $(srctree)/include/linux/kconfig.h \
+		-I$(srctree)/drivers/scsi/ufs \
+		-I$(srctree)/drivers/video/msm/mdss
 # Use LINUXINCLUDE when you must reference the include/ directory.
 # Needed to be compatible with the O= option
 LINUXINCLUDE    := \
@@ -480,22 +398,25 @@ LINUXINCLUDE    := \
 
 KBUILD_CPPFLAGS := -D__KERNEL__
 
-KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+KBUILD_CFLAGS   := -Wundef -Wstrict-prototypes -Wno-trigraphs \
                    -fno-strict-aliasing -fno-common \
                    -Werror-implicit-function-declaration \
-                   -Wno-format-security -mtune=cortex-a15 \
-                   -fmodulo-sched -fmodulo-sched-allow-regmoves -fno-tree-vectorize -ffast-math \
-                   -funswitch-loops -fpredictive-commoning -fgcse-after-reload \
+                   -Wno-format-security \
+                   -Wno-sequence-point \
+                   -Wno-switch-bool \
+                   -fno-delete-null-pointer-checks \
                    -fno-aggressive-loop-optimizations \
-                   -fno-delete-null-pointer-checks -std=gnu89 \
-                   --param l1-cache-size=32 --param l1-cache-line-size=64 --param l2-cache-size=2048
+                   -std=gnu89 $(KERNELFLAGS) 
 
-KBUILD_AFLAGS_KERNEL :=
-KBUILD_CFLAGS_KERNEL :=
-KBUILD_AFLAGS   := -D__ASSEMBLY__
-KBUILD_AFLAGS_MODULE  := -DMODULE
-KBUILD_CFLAGS_MODULE  := -DMODULE
-KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
+# L1/L2 cache size parameters
+KBUILD_CFLAGS	+= --param l1-cache-size=32 --param l1-cache-line-size=64 --param l2-cache-size=2048
+
+KBUILD_AFLAGS_KERNEL  := $(KERNELFLAGS)
+KBUILD_CFLAGS_KERNEL  := $(KERNELFLAGS)
+KBUILD_AFLAGS         := -D__ASSEMBLY__
+KBUILD_AFLAGS_MODULE  := $(MODFLAGS)
+KBUILD_CFLAGS_MODULE  := $(MODFLAGS)
+KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds -flto
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
 KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
@@ -694,37 +615,14 @@ endif # $(dot-config)
 # Defaults to vmlinux, but the arch makefile usually adds further targets
 all: vmlinux
 
-
 include $(srctree)/arch/$(SRCARCH)/Makefile
 
 KBUILD_CFLAGS	+= $(call cc-option,-fno-delete-null-pointer-checks,)
 
-# begin The SaberMod Project additions
-
-# Copyright (C) 2015 The SaberMod Project
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
-# Handle kernel CC flags by importing vendor/sm strings
-ifneq ($(strip $(LOCAL_O3)),true)
-  ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
+ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os -std=gnu89 $(call cc-disable-warning,maybe-uninitialized,)
 else
-KBUILD_CFLAGS	+= -Os -std=gnu89 $(call cc-disable-warning,maybe-uninitialized,)
-  endif
-endif
-
+KBUILD_CFLAGS	+= -O3 -std=gnu89 $(call cc-disable-warning,maybe-uninitialized,)
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
@@ -743,6 +641,9 @@ endif
 ifneq ($(CONFIG_FRAME_WARN),0)
 KBUILD_CFLAGS += $(call cc-option,-Wframe-larger-than=${CONFIG_FRAME_WARN})
 endif
+
+# Tell gcc to never replace conditional load with a non-conditional one
+KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
 
 # Handle stack protector mode.
 #
@@ -860,6 +761,12 @@ KBUILD_CFLAGS	+= $(call cc-option,-fno-strict-overflow)
 
 # conserve stack if available
 KBUILD_CFLAGS   += $(call cc-option,-fconserve-stack)
+
+# disallow errors like 'EXPORT_GPL(foo);' with missing header
+KBUILD_CFLAGS   += $(call cc-option,-Werror=implicit-int)
+
+# require functions to have arguments in prototypes, not empty 'int foo()'
+KBUILD_CFLAGS   += $(call cc-option,-Werror=strict-prototypes)
 
 # use the deterministic mode of AR if available
 KBUILD_ARFLAGS := $(call ar-option,D)
@@ -1073,7 +980,7 @@ prepare1: prepare2 $(version_h) include/generated/utsrelease.h \
 archprepare: archheaders archscripts prepare1 scripts_basic
 
 prepare0: archprepare FORCE
-	$(Q)$(MAKE) $(build)=. missing-syscalls
+	$(Q)$(MAKE) $(build)=.
 
 # All the preparing..
 prepare: prepare0
@@ -1675,7 +1582,7 @@ ifneq ($(cmd_files),)
   include $(cmd_files)
 endif
 
-# skip-makefile
+endif	# skip-makefile
 
 PHONY += FORCE
 FORCE:
